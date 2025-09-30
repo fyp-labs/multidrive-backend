@@ -20,7 +20,7 @@ class GoogleDriveMetaDataWorkflow:
             schedule_to_close_timeout=timedelta(seconds=30),
             task_queue="folders-task-queue"
         )
-
+        
         for folder in folders:
             await workflow.execute_activity(
                 "get_all_files_from_folders",
