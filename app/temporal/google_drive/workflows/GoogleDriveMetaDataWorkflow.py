@@ -1,6 +1,7 @@
 # workflows.py
 from temporalio import workflow
 from datetime import timedelta
+from temporalio.common import RetryPolicy
 
 # workflows.py
 @workflow.defn
@@ -12,25 +13,35 @@ class GoogleDriveMetaDataWorkflow:
         googleDriveAccountId = params["google_drive_account_id"]
 
         folders = await workflow.execute_activity(
-            "fetch_drive_folders_recursive",   # single activity
+            "fetch_drive_folders",   # single activity
             {
                 "user_id": user_id,
                 "google_drive_account_id": googleDriveAccountId,
             },
-            schedule_to_close_timeout=timedelta(seconds=30),
+            start_to_close_timeout=timedelta(minutes=60),
+            heartbeat_timeout=timedelta(seconds=60),
+            retry_policy=RetryPolicy(
+                maximum_attempts=3, 
+                initial_interval=timedelta(seconds=5),
+                backoff_coefficient=2.0
+            ),
             task_queue="folders-task-queue"
         )
         
-        for folder in folders:
-            await workflow.execute_activity(
+        await workflow.execute_activity(
                 "get_all_files_from_folders",
                 {
-                    "parent_id": folder.get("id"),
-                    "folder_path": folder.get("folder_path"),
+                    "folders": folders,
                     "user_id": user_id,
                     "google_drive_account_id": googleDriveAccountId,
                 },
-                schedule_to_close_timeout=timedelta(seconds=30),
+                start_to_close_timeout=timedelta(minutes=60),
+                heartbeat_timeout=timedelta(seconds=60),
+                retry_policy=RetryPolicy(
+                    maximum_attempts=3, 
+                    initial_interval=timedelta(seconds=5),
+                    backoff_coefficient=2.0
+                ),
                 task_queue="files-task-queue"
             )
 
