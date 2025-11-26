@@ -10,7 +10,6 @@ load_dotenv()
 
 
 async def main():
-    print('Temporal Worker Start: ')
     client = await Client.connect(os.getenv("TEMPORAL_CLIENT"))
     worker_folders = Worker(
         client,
