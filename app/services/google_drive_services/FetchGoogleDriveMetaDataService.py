@@ -37,7 +37,7 @@ async def startMetaDataFetching(user_id: str, google_drive_account_id: str):
             detail=f"Failed to start workflow: {str(e)}"
         )
     
-def insertFolderAndTree(db: Session, folders: list[dict], folder_tree: dict, userParams: dict):
+def upsertGoogleDriveFolders(db: Session, folders: list[dict], userParams: dict):
     try:
         userId= userParams.get("user_id")
         googleDriveAccountId= userParams.get("google_drive_account_id")
@@ -52,6 +52,18 @@ def insertFolderAndTree(db: Session, folders: list[dict], folder_tree: dict, use
             },
         )
 
+        db.execute(upsertFolderStmt)
+        db.commit()
+    except SQLAlchemyError as e:
+        db.rollback()
+            
+        raise e
+
+def upsertGoogleDriveTree(db: Session, folder_tree: dict, userParams: dict):
+    try:
+        userId= userParams.get("user_id")
+        googleDriveAccountId= userParams.get("google_drive_account_id")
+        
         folderTreeStmt = insert(GoogleDriveFolderTree).values(
             user_id=userId,
             google_drive_account_id=googleDriveAccountId,
@@ -67,14 +79,14 @@ def insertFolderAndTree(db: Session, folders: list[dict], folder_tree: dict, use
             }
         )
 
-        db.execute(upsertFolderStmt)
         db.execute(folderTreeUpsertStmt)
         db.commit()
     except SQLAlchemyError as e:
         db.rollback()
             
         raise e
-    
+
+
 def insertFiles(db: Session, file_data: list[dict]):
     try:
         fileStmt = insert(GoogleDriveFile).values(file_data)
