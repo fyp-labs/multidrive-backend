@@ -6,6 +6,12 @@ from .google_drive_models import (
     GoogleDriveFolderModel,
     GoogleDriveFolderTreeModel,
 )
+from .one_drive_models import (
+    OneDriveAccountsModel,
+    OneDriveFilesModel,
+    OneDriveFoldersModel,
+    OneDriveFoldersTreeModel,
+)
 
 __all__ = [
     "UserModel",
@@ -13,4 +19,8 @@ __all__ = [
     "GoogleDriveFolderModel",
     "GoogleDriveFileModel",
     "GoogleDriveFolderTreeModel",
+    "OneDriveAccountsModel",
+    "OneDriveFilesModel",
+    "OneDriveFoldersModel",
+    "OneDriveFoldersTreeModel",
 ]
