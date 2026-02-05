@@ -7,6 +7,7 @@ from app.temporal.google_drive.workflows.GoogleDriveMetaDataWorkflow import Goog
 from app.temporal.google_drive.workflows.OneDriveMetaDataWorkflow import OneDriveMetaDataWorkflow
 from app.temporal.google_drive.activities.GoogleDriveMetaDataActivity import fetch_drive_folders,get_all_files_from_folders
 from app.temporal.google_drive.activities.GoogleDriveImageRAGActivity import process_images_for_rag
+from app.temporal.google_drive.activities.GoogleDriveDocumentRAGActivity import process_documents_for_rag
 from app.temporal.google_drive.activities.OneDriveMetaDataActivity import fetch_one_drive_metadata
 from dotenv import load_dotenv
 load_dotenv()
@@ -42,12 +43,20 @@ async def main():
         activities=[process_images_for_rag],
     )
 
+    worker_rag_documents = Worker(
+        client,
+        task_queue="rag-documents-task-queue",
+        workflows=[GoogleDriveMetaDataWorkflow],   
+        activities=[process_documents_for_rag],
+    )
+
     
     await asyncio.gather(
         worker_folders.run(),
         worker_files.run(),
         worker_one_drive.run(),
-        worker_rag.run()
+        worker_rag.run(),
+        worker_rag_documents.run()
     )
 
 if __name__ == "__main__":

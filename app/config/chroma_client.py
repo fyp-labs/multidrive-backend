@@ -1,5 +1,6 @@
 import os
 import chromadb
+import hashlib
 from chromadb.config import Settings
 from dotenv import load_dotenv
 
@@ -30,10 +31,11 @@ def get_image_captions_collection(user_id: str, google_drive_account_id: str):
     """
     client = get_chroma_client()
     
-    collection_name = f"gdrive_images_{user_id}_{google_drive_account_id}"
-    
-    # Sanitize collection name (ChromaDB has strict naming requirements)
-    collection_name = collection_name.replace("-", "_").lower()[:63]
+    # Create a short, valid collection name using hash
+    # Format: gdrive_imgs_{hash} - always valid and under 63 chars
+    combined_id = f"{user_id}_{google_drive_account_id}"
+    id_hash = hashlib.md5(combined_id.encode()).hexdigest()[:16]
+    collection_name = f"gdrive_imgs_{id_hash}"
     
     try:
         collection = client.get_or_create_collection(
