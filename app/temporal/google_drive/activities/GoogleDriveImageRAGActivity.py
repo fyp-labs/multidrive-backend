@@ -5,12 +5,15 @@ from functools import partial
 from app.config.database import SessionLocal
 from app.models.google_drive_models.GoogleDriveFileModel import GoogleDriveFile
 from app.models.google_drive_models.GoogleDriveImageCaptionModel import GoogleDriveImageCaption
-from app.config.gemini_client import generate_caption_from_url
+from app.config.gemini_client import generate_caption_from_url, download_thumbnail
+from app.services.local_caption_service import get_local_caption_service
+from app.services.blip_caption_service import get_blip_caption_service
 from app.config.chroma_client import get_image_captions_collection
 from app.utils.fetch_google_drive_tokens import getGoogleDriveTokens
 import uuid
 from sqlalchemy.dialects.postgresql import insert
 from datetime import datetime, timezone
+import os
 
 
 @activity.defn
@@ -49,7 +52,10 @@ async def process_images_for_rag(input: dict):
         }
     
     access_token = tokens.get("access_token")
-    print(f"✅ Retrieved access token: {access_token[:20]}..." if access_token else "❌ No access token")
+    if access_token:
+        print(f"✅ Retrieved access token for images (length: {len(access_token)} chars)")
+    else:
+        print(f"❌ No access token retrieved!")
     
     # Step 1: Fetch all image files with thumbnails from database
     activity.heartbeat({"step": "fetch_images", "message": "Fetching image files from database"})
@@ -137,16 +143,57 @@ async def process_images_for_rag(input: dict):
                 print(f"🔄 Processing: {file_name}")
                 print(f"   Thumbnail: {thumbnail_link[:80]}...")
                 
-                # Generate caption using Gemini (with authenticated thumbnail download and retries)
-                # Includes file_id for API fallback when thumbnail URL fails (403 errors)
-                caption = await generate_caption_from_url(
-                    thumbnail_link, 
-                    access_token=access_token,
-                    file_id=file_id,  # For Drive API fallback
-                    max_retries=3  # Will retry up to 3 times with exponential backoff
-                )
+                # Check which captioning service to use (local model vs Gemini API)
+                use_local_model = os.getenv("USE_LOCAL_VISION_MODEL", "false").lower() == "true"
                 
-                print(f"✅ Caption generated: {caption[:100]}...")
+                if use_local_model:
+                    # Use local vision model (CPU-based)
+                    print(f"   🤖 Using local vision model for captioning...")
+                    
+                    # Download FULL-RESOLUTION image (not thumbnail) for better caption quality
+                    # Local models benefit from higher resolution images
+                    image = await download_thumbnail(
+                        thumbnail_link, 
+                        access_token=access_token,
+                        file_id=file_id,
+                        prefer_full_image=True,  # Download full image instead of thumbnail
+                        max_size=1024  # Resize to 1024px max (good balance between quality and memory)
+                    )
+                    
+                    # Auto-detect which local model to use based on LOCAL_VISION_MODEL env var
+                    model_name = os.getenv("LOCAL_VISION_MODEL", "").lower()
+                    
+                    if "blip" in model_name:
+                        # Use BLIP model (better quality)
+                        print(f"   🎨 Using BLIP model for high-quality captions")
+                        local_service = get_blip_caption_service()
+                    else:
+                        # Use ViT-GPT2 model (faster but lower quality)
+                        print(f"   🤖 Using ViT-GPT2 model")
+                        local_service = get_local_caption_service()
+                    
+                    # Run model inference in thread pool (blocking operation)
+                    caption = await loop.run_in_executor(
+                        None,
+                        local_service.generate_caption,
+                        image
+                    )
+                    
+                    print(f"✅ Local caption generated: {caption[:100]}...")
+                else:
+                    # Use Gemini API (original behavior)
+                    print(f"   🤖 Using Gemini API for captioning...")
+                    
+                    # Generate caption using Gemini (with authenticated thumbnail download and retries)
+                    # Includes file_id for API fallback when thumbnail URL fails (403 errors)
+                    caption = await generate_caption_from_url(
+                        thumbnail_link, 
+                        access_token=access_token,
+                        file_id=file_id,  # For Drive API fallback
+                        max_retries=3  # Will retry up to 3 times with exponential backoff
+                    )
+                    
+                    print(f"✅ Gemini caption generated: {caption[:100]}...")
                 
                 # Add delay between API calls to avoid rate limiting
                 if processed_count + failed_count < total_images - 1:  # Don't delay after last image

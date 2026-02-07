@@ -39,19 +39,21 @@ def get_gemini_model(model_name: str = None):
     print(f"   🤖 Using Gemini model: {model_name}")
     return genai.GenerativeModel(model_name)
 
-async def download_thumbnail_via_api(file_id: str, access_token: str) -> Image.Image:
+async def download_thumbnail_via_api(file_id: str, access_token: str, max_size: int = 1024) -> Image.Image:
     """
-    Download thumbnail using Google Drive API directly (fallback method).
+    Download image using Google Drive API directly (fallback method).
+    Downloads full-resolution image for better caption quality.
     
     Args:
         file_id: Google Drive file ID
         access_token: OAuth access token
+        max_size: Maximum dimension for resizing (default: 1024px for better quality)
     
     Returns:
         PIL Image object
     """
     try:
-        print(f"   📥 Fetching via Drive API (file_id: {file_id[:20]}...)...")
+        print(f"   📥 Fetching full image via Drive API (file_id: {file_id[:20]}...)...")
         
         # Create credentials from access token
         credentials = Credentials(token=access_token)
@@ -59,7 +61,7 @@ async def download_thumbnail_via_api(file_id: str, access_token: str) -> Image.I
         # Build Drive service
         service = build('drive', 'v3', credentials=credentials)
         
-        # Get file with thumbnail
+        # Get full image content (not thumbnail)
         request = service.files().get_media(fileId=file_id)
         
         # Execute in thread pool since it's blocking
@@ -70,29 +72,40 @@ async def download_thumbnail_via_api(file_id: str, access_token: str) -> Image.I
         image_bytes = io.BytesIO(file_content)
         image = Image.open(image_bytes)
         
-        # Create thumbnail if image is large
-        if image.size[0] > 500 or image.size[1] > 500:
-            image.thumbnail((500, 500), Image.Resampling.LANCZOS)
+        original_size = image.size
+        print(f"   📥 Full image downloaded: {original_size}, format: {image.format}")
         
-        print(f"   📥 API download successful: {image.size}, format: {image.format}")
+        # Resize if image is very large (for memory efficiency while maintaining quality)
+        if image.size[0] > max_size or image.size[1] > max_size:
+            print(f"   🔄 Resizing from {original_size} to fit {max_size}px (maintaining aspect ratio)...")
+            image.thumbnail((max_size, max_size), Image.Resampling.LANCZOS)
+            print(f"   ✅ Resized to: {image.size}")
+        
         return image
         
     except Exception as e:
         print(f"   ❌ API download failed: {type(e).__name__} - {str(e)}")
         raise
 
-async def download_thumbnail(thumbnail_url: str, access_token: str = None, file_id: str = None) -> Image.Image:
+async def download_thumbnail(thumbnail_url: str, access_token: str = None, file_id: str = None, prefer_full_image: bool = False, max_size: int = 1024) -> Image.Image:
     """
-    Download an image thumbnail from a URL with fallback to Google Drive API.
+    Download an image from Google Drive with fallback to full image via API.
     
     Args:
         thumbnail_url: URL of the thumbnail to download
         access_token: OAuth access token for authenticated requests (required for Google Drive)
         file_id: Google Drive file ID (for fallback method)
+        prefer_full_image: If True, skip thumbnail and download full image directly via API (better quality)
+        max_size: Maximum dimension for resizing full images (default: 1024px)
     
     Returns:
         PIL Image object
     """
+    # If prefer_full_image is True and we have the necessary credentials, skip thumbnail URL
+    if prefer_full_image and file_id and access_token:
+        print(f"   📥 Downloading full-resolution image (skipping thumbnail URL)...")
+        return await download_thumbnail_via_api(file_id, access_token, max_size)
+    
     headers = {}
     if access_token:
         headers["Authorization"] = f"Bearer {access_token}"
@@ -105,8 +118,8 @@ async def download_thumbnail(thumbnail_url: str, access_token: str = None, file_
             
             # If 403 Forbidden and we have file_id, try API fallback
             if response.status_code == 403 and file_id and access_token:
-                print(f"   ⚠️ 403 Forbidden - Trying Drive API fallback...")
-                return await download_thumbnail_via_api(file_id, access_token)
+                print(f"   ⚠️ 403 Forbidden - Trying full image download via Drive API...")
+                return await download_thumbnail_via_api(file_id, access_token, max_size)
             
             response.raise_for_status()
             
@@ -118,8 +131,8 @@ async def download_thumbnail(thumbnail_url: str, access_token: str = None, file_
             return image
     except httpx.HTTPStatusError as e:
         if e.response.status_code == 403 and file_id and access_token:
-            print(f"   ⚠️ 403 Forbidden - Trying Drive API fallback...")
-            return await download_thumbnail_via_api(file_id, access_token)
+            print(f"   ⚠️ 403 Forbidden - Trying full image download via Drive API...")
+            return await download_thumbnail_via_api(file_id, access_token, max_size)
         print(f"   ❌ Download failed: {type(e).__name__} - {str(e)}")
         raise
     except Exception as e:
