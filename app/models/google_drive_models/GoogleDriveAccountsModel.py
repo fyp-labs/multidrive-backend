@@ -12,8 +12,8 @@ class GoogleDriveAccount(Base):
     user_id = Column(String, ForeignKey("users.id", ondelete="CASCADE"), nullable=False)
     access_token = Column(Text, nullable=False)
     refresh_token = Column(String, nullable=False)
-    expires_in = Column(Integer, nullable=False)
-    scope = Column(Text, nullable=False)
+    expires_in = Column(BigInteger, nullable=False)
+    scope = Column(Text, nullable=True)
     created_at = Column(DateTime(timezone=True), server_default=func.now())
     updated_at = Column(DateTime(timezone=True), onupdate=func.now())
 
