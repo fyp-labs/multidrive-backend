@@ -1,5 +1,5 @@
 import uuid
-from sqlalchemy import Column, String, ForeignKey, Integer, Boolean, DateTime
+from sqlalchemy import Column, String, Boolean, Integer, DateTime, ForeignKey
 from sqlalchemy.sql import func
 from sqlalchemy.orm import relationship
 from app.config.database import Base
@@ -12,8 +12,8 @@ class OTPCode(Base):
     code = Column(String, unique=True, nullable=False)
     user_id = Column(String, ForeignKey("users.id", ondelete="CASCADE"), nullable=False, index=True)
     expires_at = Column(DateTime(timezone=True), nullable=False)
-    used = Column(Boolean, nullable=False, server_default="false")
-    attempts = Column(Integer, nullable=False, server_default="0")
+    used = Column(Boolean, nullable=False, default=False)
+    attempts = Column(Integer, nullable=False, default=0)
     created_at = Column(DateTime(timezone=True), server_default=func.now())
 
     user = relationship("User", backref="otp_codes")

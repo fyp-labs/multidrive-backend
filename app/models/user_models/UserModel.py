@@ -1,12 +1,12 @@
 import uuid
 import enum
-from sqlalchemy import Column, String, ForeignKey, Integer, Text, JSON, DateTime, BigInteger, Boolean, Enum
+from sqlalchemy import Column, String, ForeignKey, Integer, Text, JSON, DateTime, BigInteger, Enum
 from sqlalchemy.orm import relationship
 from sqlalchemy.sql import func
 from app.config.database import Base
 
 
-class Role(enum.Enum):
+class Role(str, enum.Enum):
     ADMIN = "ADMIN"
     USER = "USER"
 
@@ -19,6 +19,6 @@ class User(Base):
     email = Column(String, unique=True, index=True, nullable=False)
     password = Column(String, nullable=True)
     email_verified = Column(DateTime(timezone=True), nullable=True)
-    role = Column(Enum(Role, name="Role", create_constraint=False, native_enum=True), nullable=False, server_default="USER")
+    role = Column(Enum(Role, name="role"), nullable=False, default=Role.USER, server_default="USER")
     created_at = Column(DateTime(timezone=True), server_default=func.now())
     updated_at = Column(DateTime(timezone=True), onupdate=func.now())
