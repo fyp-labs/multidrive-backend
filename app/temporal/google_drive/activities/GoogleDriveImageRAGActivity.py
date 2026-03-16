@@ -164,8 +164,8 @@ async def process_images_for_rag(input: dict):
                     model_name = os.getenv("LOCAL_VISION_MODEL", "").lower()
                     
                     if "blip" in model_name:
-                        # Use BLIP model (better quality)
-                        print(f"   🎨 Using BLIP model for high-quality captions")
+                        # Use BLIP model (fine-tuned or base, better quality)
+                        print(f"   🎨 Using BLIP model for high-quality captions (model: {model_name})")
                         local_service = get_blip_caption_service()
                     else:
                         # Use ViT-GPT2 model (faster but lower quality)

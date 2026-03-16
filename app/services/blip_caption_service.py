@@ -2,9 +2,13 @@
 BLIP-based Image Captioning Service
 
 Uses Salesforce BLIP model for high-quality image captions.
-BLIP provides significantly better caption quality than ViT-GPT2.
+Supports both HuggingFace model names and local fine-tuned model paths.
 
-Model: Salesforce/blip-image-captioning-base (or -large)
+Model options:
+- Local fine-tuned: ./model_cache/models--Salesforce--finetuned-blip-image-captioning-base/best_model
+- HuggingFace: Salesforce/blip-image-captioning-base (or -large)
+
+Features:
 - Better object recognition
 - More detailed descriptions
 - Better text detection in images
@@ -30,6 +34,7 @@ class BlipCaptionService:
     - CPU-only: Explicitly configured for CPU execution
     - Singleton: Model loads once and reused across requests
     - High quality: Much better captions than ViT-GPT2
+    - Supports local fine-tuned models and HuggingFace model names
     """
     
     _instance: Optional['BlipCaptionService'] = None
@@ -48,39 +53,53 @@ class BlipCaptionService:
         self.model_name = os.getenv("LOCAL_VISION_MODEL", "Salesforce/blip-image-captioning-base")
         self.cache_dir = os.getenv("MODEL_CACHE_DIR", "./model_cache")
         self.device = "cpu"  # Force CPU usage
+        # Check if the model path is a local directory (fine-tuned model)
+        self.is_local_path = os.path.isdir(self.model_name)
         
     def _load_model(self):
         """
         Lazy load the BLIP model and processor.
         Only loads once per application lifecycle.
+        Supports both local fine-tuned model directories and HuggingFace model names.
         """
         if self._model_loaded:
             return
             
         try:
-            print(f"🔄 Loading BLIP vision model: {self.model_name}")
+            if self.is_local_path:
+                print(f"🔄 Loading fine-tuned BLIP model from local path: {self.model_name}")
+            else:
+                print(f"🔄 Loading BLIP model from HuggingFace: {self.model_name}")
             print(f"   📁 Cache directory: {self.cache_dir}")
             print(f"   💻 Device: {self.device}")
             
             # Create cache directory if it doesn't exist
             os.makedirs(self.cache_dir, exist_ok=True)
             
-            # Load BLIP processor and model
-            self._processor = BlipProcessor.from_pretrained(
-                self.model_name,
-                cache_dir=self.cache_dir
-            )
-            self._model = BlipForConditionalGeneration.from_pretrained(
-                self.model_name,
-                cache_dir=self.cache_dir
-            )
+            if self.is_local_path:
+                # Load from local fine-tuned model directory (no cache_dir needed)
+                print(f"   📂 Loading processor from local path...")
+                self._processor = BlipProcessor.from_pretrained(self.model_name)
+                print(f"   📂 Loading model weights from local path...")
+                self._model = BlipForConditionalGeneration.from_pretrained(self.model_name)
+            else:
+                # Load from HuggingFace with caching
+                self._processor = BlipProcessor.from_pretrained(
+                    self.model_name,
+                    cache_dir=self.cache_dir
+                )
+                self._model = BlipForConditionalGeneration.from_pretrained(
+                    self.model_name,
+                    cache_dir=self.cache_dir
+                )
             
             # Move model to CPU and set to evaluation mode
             self._model = self._model.to(self.device)
             self._model.eval()
             
             self._model_loaded = True
-            print(f"✅ BLIP model loaded successfully")
+            model_type = "fine-tuned (local)" if self.is_local_path else "HuggingFace"
+            print(f"✅ BLIP model loaded successfully ({model_type})")
             
         except Exception as e:
             print(f"❌ Failed to load BLIP model: {type(e).__name__} - {str(e)}")
@@ -157,7 +176,8 @@ class BlipCaptionService:
             "cache_dir": self.cache_dir,
             "device": self.device,
             "loaded": self._model_loaded,
-            "type": "BLIP",
+            "type": "BLIP (fine-tuned)" if self.is_local_path else "BLIP",
+            "source": "local" if self.is_local_path else "huggingface",
             "quality": "High"
         }
 
