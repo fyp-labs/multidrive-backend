@@ -23,3 +23,9 @@ venv/
 
 # Temporal
 temporal-data/
+
+# ChromaDB (Vector Database)
+chroma_db/
+
+# ML model cache
+model_cache/

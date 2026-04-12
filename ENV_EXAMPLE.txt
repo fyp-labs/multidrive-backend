@@ -1,0 +1,27 @@
+# Database Configuration
+DATABASE_LINK=postgresql://username:password@localhost:5432/multidrive_db
+
+# Temporal Configuration
+TEMPORAL_CLIENT=localhost:7233
+
+# Google OAuth Configuration
+GOOGLE_CLIENT_ID=your_google_client_id
+GOOGLE_CLIENT_SECRET=your_google_client_secret
+
+# Gemini API Configuration (for RAG Pipeline)
+GEMINI_API_KEY=your_gemini_api_key_here
+# Optional: Specify Gemini model (default: gemini-2.5-flash)
+# Options: gemini-2.5-flash, gemini-2.0-flash-thinking-exp-01-21, gemini-1.5-pro
+GEMINI_MODEL=gemini-2.5-flash
+
+# ChromaDB Configuration (for Vector Embeddings)
+CHROMA_DB_PATH=./chroma_db
+
+# Tesseract OCR Configuration (for image-based PDFs)
+# Windows: Set path to tesseract.exe if not in system PATH
+# TESSERACT_CMD=C:\Program Files\Tesseract-OCR\tesseract.exe
+# Linux/Mac: Usually auto-detected if installed via package manager
+
+# OneDrive OAuth Configuration (if applicable)
+ONEDRIVE_CLIENT_ID=your_onedrive_client_id
+ONEDRIVE_CLIENT_SECRET=your_onedrive_client_secret
