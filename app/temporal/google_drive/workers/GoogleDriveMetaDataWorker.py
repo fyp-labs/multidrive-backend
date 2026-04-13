@@ -14,7 +14,7 @@ load_dotenv()
 
 
 async def main():
-    client = await Client.connect(os.getenv("TEMPORAL_CLIENT", "localhost:7233"))
+    client = await Client.connect(os.getenv("TEMPORAL_CLIENT"))
     worker_folders = Worker(
         client,
         task_queue="folders-task-queue",

@@ -21,8 +21,12 @@ async def lifespan(app: FastAPI):
         raise
 
     # Connect Temporal
-    app.state.temporal_client = await Client.connect(os.getenv("TEMPORAL_CLIENT"))
-    print(" Temporal client connected")
+    try:
+        app.state.temporal_client = await Client.connect(os.getenv("TEMPORAL_CLIENT"))
+        print(" Temporal client connected")
+    except Exception as e:
+        print(" Temporal connection failed:", e)
+        app.state.temporal_client = None
 
     yield  
 
