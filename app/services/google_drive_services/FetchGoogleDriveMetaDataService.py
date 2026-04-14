@@ -22,6 +22,7 @@ async def startMetaDataFetching(user_id: str, google_drive_account_id: str):
             {"user_id": user_id, "google_drive_account_id": google_drive_account_id},  
             id=workflow_id,
             task_queue="folders-task-queue",
+            id_conflict_policy=WorkflowIDConflictPolicy.USE_EXISTING,
         )
 
         return {
