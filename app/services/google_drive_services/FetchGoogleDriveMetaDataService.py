@@ -10,6 +10,7 @@ from sqlalchemy.dialects.postgresql import insert
 from temporalio.common import WorkflowIDConflictPolicy
 from sqlalchemy.exc import SQLAlchemyError
 from sqlalchemy.orm import Session
+import traceback
 
 
 async def startMetaDataFetching(user_id: str, google_drive_account_id: str):
@@ -34,6 +35,7 @@ async def startMetaDataFetching(user_id: str, google_drive_account_id: str):
         }
 
     except Exception as e:
+        traceback.print_exc()
         raise HTTPException(
             status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
             detail=f"Failed to start workflow: {str(e)}"
@@ -58,7 +60,7 @@ def upsertGoogleDriveFolders(db: Session, folders: list[dict], userParams: dict)
         db.commit()
     except SQLAlchemyError as e:
         db.rollback()
-            
+        traceback.print_exc()
         raise e
 
 def upsertGoogleDriveTree(db: Session, folder_tree: dict, userParams: dict):
@@ -85,7 +87,7 @@ def upsertGoogleDriveTree(db: Session, folder_tree: dict, userParams: dict):
         db.commit()
     except SQLAlchemyError as e:
         db.rollback()
-            
+        traceback.print_exc()
         raise e
 
 
@@ -107,5 +109,5 @@ def insertFiles(db: Session, file_data: list[dict]):
         db.commit()
     except SQLAlchemyError as e:
         db.rollback()
-                       
+        traceback.print_exc()
         raise e
