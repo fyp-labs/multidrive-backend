@@ -1,6 +1,7 @@
 from sqlalchemy.future import select
 from app.models.google_drive_models.GoogleDriveAccountsModel import GoogleDriveAccount
-from app.config.database import SessionLocal  
+from app.config.database import SessionLocal
+from app.config.encryption import decrypt
 
 async def getGoogleDriveTokens(input: dict):
     """Fetch Google Drive tokens for an activity context."""
@@ -21,6 +22,9 @@ async def getGoogleDriveTokens(input: dict):
 
         if tokens:
             access_token, refresh_token = tokens
-            return {"access_token": access_token, "refresh_token": refresh_token}
+            return {
+                "access_token": decrypt(access_token),
+                "refresh_token": decrypt(refresh_token),
+            }
 
         return None
