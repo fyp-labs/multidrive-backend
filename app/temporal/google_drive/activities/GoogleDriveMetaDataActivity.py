@@ -308,10 +308,12 @@ async def get_all_files_from_folders(input: dict):
             page_token = response.get("nextPageToken")
             
             if file_data:
+                activity.heartbeat({"step": "saving", "count": len(file_data)})
+
                 def save_db_sync(data):
                     with SessionLocal() as db:
                         insertFiles(db, data)
-                
+
                 await loop.run_in_executor(None, partial(save_db_sync, file_data))
                 
                 file_data = []
