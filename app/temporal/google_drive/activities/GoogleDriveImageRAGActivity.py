@@ -195,11 +195,18 @@ async def process_images_for_rag(input: dict):
                     
                     print(f"✅ Gemini caption generated: {caption[:100]}...")
                 
+                activity.heartbeat({
+                    "step": "caption_generated",
+                    "file_name": file_name,
+                    "processed": processed_count + 1,
+                    "total": total_images
+                })
+
                 # Add delay between API calls to avoid rate limiting
                 if processed_count + failed_count < total_images - 1:  # Don't delay after last image
                     print(f"   ⏳ Waiting {delay_between_images}s before next image (rate limit protection)...")
                     await asyncio.sleep(delay_between_images)
-                
+
                 # Generate unique ChromaDB document ID
                 chroma_doc_id = f"{user_id}_{google_drive_account_id}_{file_id}"
                 
@@ -219,7 +226,14 @@ async def process_images_for_rag(input: dict):
                     )
                 
                 await loop.run_in_executor(None, add_to_chroma_sync)
-                
+
+                activity.heartbeat({
+                    "step": "chroma_saved",
+                    "file_name": file_name,
+                    "processed": processed_count + 1,
+                    "total": total_images
+                })
+
                 # Prepare caption data for PostgreSQL
                 captions_to_save.append({
                     "id": str(uuid.uuid4()),
