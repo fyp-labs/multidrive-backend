@@ -25,11 +25,17 @@ def decrypt(encrypted_text: str) -> str:
     key = _get_encryption_key()
     parts = encrypted_text.split(":")
 
-    if len(parts) != 2:
+    if len(parts) == 3:
+        nonce = bytes.fromhex(parts[0])
+        auth_tag = bytes.fromhex(parts[1])
+        ciphertext = bytes.fromhex(parts[2])
+        encrypted = ciphertext + auth_tag
+    elif len(parts) == 2:
+        # Format from Python: nonce:encrypted (authTag appended by AESGCM)
+        nonce = bytes.fromhex(parts[0])
+        encrypted = bytes.fromhex(parts[1])
+    else:
         raise ValueError("Invalid encrypted text format")
-
-    nonce = bytes.fromhex(parts[0])
-    encrypted = bytes.fromhex(parts[1])
 
     aesgcm = AESGCM(key)
     decrypted = aesgcm.decrypt(nonce, encrypted, None)
