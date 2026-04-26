@@ -5,6 +5,7 @@ from app.services.google_drive_services.ImageSearchService import (
     get_image_caption,
     get_all_image_captions
 )
+from app.utils.keyword_extractor import extract_keywords
 from pydantic import BaseModel, Field
 from typing import Optional
 
@@ -39,10 +40,11 @@ async def searchImages(db: Session, request: ImageSearchRequest):
         return {
             "success": True,
             "query": request.query,
+            "keywords": extract_keywords(request.query),
             "results_count": len(results),
             "results": results
         }
-    
+
     except Exception as e:
         raise HTTPException(
             status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,

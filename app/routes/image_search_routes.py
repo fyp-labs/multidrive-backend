@@ -13,6 +13,7 @@ from app.services.google_drive_services.DocumentSearchService import (
     get_document_text,
     get_all_document_embeddings
 )
+from app.utils.keyword_extractor import extract_keywords
 from pydantic import BaseModel, Field
 from typing import Optional
 
@@ -120,6 +121,7 @@ async def search_documents_endpoint(
         return {
             "success": True,
             "query": request.query,
+            "keywords": extract_keywords(request.query),
             "results_count": len(results),
             "results": results
         }
