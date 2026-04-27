@@ -15,7 +15,7 @@ from app.services.google_drive_services.DocumentSearchService import (
 )
 from app.utils.keyword_extractor import extract_keywords
 from pydantic import BaseModel, Field
-from typing import Optional
+from typing import List, Optional
 
 router = APIRouter(
     prefix="/api/image-search",
@@ -24,7 +24,11 @@ router = APIRouter(
 
 class DocumentSearchRequest(BaseModel):
     user_id: str = Field(..., description="User ID")
-    google_drive_account_id: str = Field(..., description="Google Drive account ID")
+    google_drive_account_ids: List[str] = Field(
+        ...,
+        description="One or more Google Drive account IDs to search across",
+        min_length=1
+    )
     query: str = Field(..., description="Natural language search query", min_length=1)
     limit: Optional[int] = Field(10, description="Maximum number of results", ge=1, le=50)
 
@@ -113,7 +117,7 @@ async def search_documents_endpoint(
         results = await search_documents_by_text(
             db=db,
             user_id=request.user_id,
-            google_drive_account_id=request.google_drive_account_id,
+            google_drive_account_ids=request.google_drive_account_ids,
             query=request.query,
             limit=request.limit
         )
@@ -185,7 +189,7 @@ async def list_all_documents_endpoint(
         documents = await get_all_document_embeddings(
             db=db,
             user_id=request.user_id,
-            google_drive_account_id=request.google_drive_account_id,
+            google_drive_account_ids=request.google_drive_account_ids,
             skip=request.skip,
             limit=request.limit
         )
