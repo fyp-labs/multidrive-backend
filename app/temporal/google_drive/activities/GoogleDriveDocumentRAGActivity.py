@@ -187,7 +187,14 @@ async def process_documents_for_rag(input: dict):
                     mime_type, 
                     file_name
                 )
+                if text_content:
+                    text_content = text_content.replace("\x00", "")
                 
+                if isinstance(extraction_meta, dict):                                                                                                                                                                                         
+                    extraction_meta = {
+                        k: (v.replace("\x00", "") if isinstance(v, str) else v)
+                        for k, v in extraction_meta.items()                                                                                                                                                                                   
+                    }
                 if not text_content or len(text_content.strip()) < 50:
                     print(f"   ⚠️ Document has insufficient text content, skipping")
                     failed_count += 1

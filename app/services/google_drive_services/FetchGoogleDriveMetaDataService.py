@@ -7,8 +7,10 @@ from app.models.google_drive_models.GoogleDriveFolderTreeModel import GoogleDriv
 from app.models.google_drive_models.GoogleDriveFileModel import GoogleDriveFile
 from datetime import datetime, timezone
 from sqlalchemy.dialects.postgresql import insert
+from temporalio.common import WorkflowIDConflictPolicy
 from sqlalchemy.exc import SQLAlchemyError
 from sqlalchemy.orm import Session
+import traceback
 
 
 async def startMetaDataFetching(user_id: str, google_drive_account_id: str):
@@ -22,6 +24,7 @@ async def startMetaDataFetching(user_id: str, google_drive_account_id: str):
             {"user_id": user_id, "google_drive_account_id": google_drive_account_id},  
             id=workflow_id,
             task_queue="folders-task-queue",
+            id_conflict_policy=WorkflowIDConflictPolicy.USE_EXISTING,
         )
 
         return {
@@ -32,6 +35,7 @@ async def startMetaDataFetching(user_id: str, google_drive_account_id: str):
         }
 
     except Exception as e:
+        traceback.print_exc()
         raise HTTPException(
             status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
             detail=f"Failed to start workflow: {str(e)}"
@@ -56,7 +60,7 @@ def upsertGoogleDriveFolders(db: Session, folders: list[dict], userParams: dict)
         db.commit()
     except SQLAlchemyError as e:
         db.rollback()
-            
+        traceback.print_exc()
         raise e
 
 def upsertGoogleDriveTree(db: Session, folder_tree: dict, userParams: dict):
@@ -83,7 +87,7 @@ def upsertGoogleDriveTree(db: Session, folder_tree: dict, userParams: dict):
         db.commit()
     except SQLAlchemyError as e:
         db.rollback()
-            
+        traceback.print_exc()
         raise e
 
 
@@ -105,5 +109,5 @@ def insertFiles(db: Session, file_data: list[dict]):
         db.commit()
     except SQLAlchemyError as e:
         db.rollback()
-                       
+        traceback.print_exc()
         raise e

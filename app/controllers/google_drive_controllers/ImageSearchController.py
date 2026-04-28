@@ -1,3 +1,4 @@
+from typing import List, Optional
 from fastapi import HTTPException, status
 from sqlalchemy.orm import Session
 from app.services.google_drive_services.ImageSearchService import (
@@ -5,20 +6,28 @@ from app.services.google_drive_services.ImageSearchService import (
     get_image_caption,
     get_all_image_captions
 )
+from app.utils.keyword_extractor import extract_keywords
 from pydantic import BaseModel, Field
-from typing import Optional
 
 
 class ImageSearchRequest(BaseModel):
     user_id: str = Field(..., description="User ID")
-    google_drive_account_id: str = Field(..., description="Google Drive account ID")
+    google_drive_account_ids: List[str] = Field(
+        ...,
+        description="One or more Google Drive account IDs to search across",
+        min_length=1
+    )
     query: str = Field(..., description="Natural language search query", min_length=1)
     limit: Optional[int] = Field(10, description="Maximum number of results", ge=1, le=50)
 
 
 class GetCaptionsRequest(BaseModel):
     user_id: str = Field(..., description="User ID")
-    google_drive_account_id: str = Field(..., description="Google Drive account ID")
+    google_drive_account_ids: List[str] = Field(
+        ...,
+        description="One or more Google Drive account IDs",
+        min_length=1
+    )
     skip: Optional[int] = Field(0, description="Number of records to skip", ge=0)
     limit: Optional[int] = Field(100, description="Maximum number of records", ge=1, le=500)
 
@@ -31,18 +40,19 @@ async def searchImages(db: Session, request: ImageSearchRequest):
         results = await search_images_by_text(
             db=db,
             user_id=request.user_id,
-            google_drive_account_id=request.google_drive_account_id,
+            google_drive_account_ids=request.google_drive_account_ids,
             query=request.query,
             limit=request.limit
         )
-        
+
         return {
             "success": True,
             "query": request.query,
+            "keywords": extract_keywords(request.query),
             "results_count": len(results),
             "results": results
         }
-    
+
     except Exception as e:
         raise HTTPException(
             status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
@@ -56,18 +66,18 @@ async def getImageCaption(db: Session, file_id: str):
     """
     try:
         caption_data = await get_image_caption(db=db, file_id=file_id)
-        
+
         if not caption_data:
             raise HTTPException(
                 status_code=status.HTTP_404_NOT_FOUND,
                 detail=f"No caption found for file_id: {file_id}"
             )
-        
+
         return {
             "success": True,
             "caption": caption_data
         }
-    
+
     except HTTPException:
         raise
     except Exception as e:
@@ -79,17 +89,17 @@ async def getImageCaption(db: Session, file_id: str):
 
 async def getAllImageCaptions(db: Session, request: GetCaptionsRequest):
     """
-    Controller for getting all image captions for a user's Google Drive account.
+    Controller for getting all image captions across one or more accounts.
     """
     try:
         captions = await get_all_image_captions(
             db=db,
             user_id=request.user_id,
-            google_drive_account_id=request.google_drive_account_id,
+            google_drive_account_ids=request.google_drive_account_ids,
             skip=request.skip,
             limit=request.limit
         )
-        
+
         return {
             "success": True,
             "count": len(captions),
@@ -97,7 +107,7 @@ async def getAllImageCaptions(db: Session, request: GetCaptionsRequest):
             "limit": request.limit,
             "captions": captions
         }
-    
+
     except Exception as e:
         raise HTTPException(
             status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
