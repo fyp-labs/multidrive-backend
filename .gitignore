@@ -29,3 +29,5 @@ chroma_db/
 
 # ML model cache
 model_cache/
+
+.env.docker
